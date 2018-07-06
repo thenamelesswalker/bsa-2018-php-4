@@ -4,24 +4,53 @@ namespace BinaryStudioAcademy\Game;
 
 use BinaryStudioAcademy\Game\Contracts\Io\Reader;
 use BinaryStudioAcademy\Game\Contracts\Io\Writer;
+use BinaryStudioAcademy\Game\Factories\CommandFactory;
 
 class Game
 {
+    protected $gameManager = null;
+
+    public function __construct(GameManager $gameManager = null)
+    {
+        $this->gameManager = $gameManager ?? new GameManager();
+    }
+
     public function start(Reader $reader, Writer $writer): void
     {
-        // TODO: Implement infinite loop and process user's input
-        // Feel free to delete these lines
-        $writer->writeln("You can't play yet. Please read input and convert it to commands.");
-        $writer->writeln("Don't forget to create game's world.");
-        $writer->write("Type your name:");
-        $input = trim($reader->read());
-        $writer->writeln("Good luck with this task, {$input}!");
+        $writer->writeln("You need to build spaceship. Type help for avaliable commands.");
+        do {
+            $writer->write("Command: ");
+            $this->run($reader, $writer);
+            if ($this->gameManager->isForceFinished()) {
+                break;
+            }
+        } while (true);
+
+    }
+
+    public function getGameManager(): ?GameManager
+    {
+        return $this->gameManager;
     }
 
     public function run(Reader $reader, Writer $writer): void
     {
-        // TODO: Implement step by step mode with game state persistence between steps
-        $writer->writeln("You can't play yet. Please read input and convert it to commands.");
-        $writer->writeln("Don't forget to create game's world.");
+        $input = trim($reader->read());
+        $arguments = explode(":", $input);
+        $command = array_shift($arguments);
+
+        try {
+            $commandInstance = CommandFactory::create($command, $this);
+            $message = $commandInstance->execute($arguments);
+            if($this->gameManager->checkWin()) {
+                if(!$this->gameManager->isFinished()) {
+                    $message .= " => You won!";
+                    $this->gameManager->setFinished(true);
+                }
+            }
+            $writer->writeln($message);
+        } catch (\Exception $e) {
+            $writer->writeln($e->getMessage());
+        }
     }
 }
